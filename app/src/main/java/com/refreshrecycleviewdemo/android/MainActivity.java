@@ -30,6 +30,8 @@ public class MainActivity extends AppCompatActivity {
         for(int i = 0 ; i < 20 ; i++){
             list.add(String.valueOf(i));
         }
+
+        test.setAdapter(new RefreshRecycleViewAdapter());
     }
 
 
