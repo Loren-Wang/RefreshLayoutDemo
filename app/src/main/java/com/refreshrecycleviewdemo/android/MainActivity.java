@@ -32,6 +32,39 @@ public class MainActivity extends AppCompatActivity {
         }
 
         test.setAdapter(new RefreshRecycleViewAdapter());
+
+        test.setRefreshLoadingCallback(new RefreshLoadingCallback() {
+            @Override
+            public void isRefresh() {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Thread.sleep(2000);
+                            test.finishHeadRefresh();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).start();
+            }
+
+            @Override
+            public void isLoadingMore() {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Thread.sleep(2000);
+                            test.finishFootLoadingMore();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).start();
+            }
+        });
+
     }
 
 
