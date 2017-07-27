@@ -1,4 +1,4 @@
-package com.refreshrecycleviewdemo.android;
+package com.refreshrecycleviewdemo.android.refreshLayout;
 
 import android.content.Context;
 import android.os.Handler;
@@ -14,7 +14,7 @@ import android.widget.LinearLayout;
  * Created by wangliang on 0026/2017/7/26.
  * 创建时间： 0026/2017/7/26 10:11
  * 创建人：王亮（Loren wang）
- * 功能作用：
+ * 功能作用：刷新控件的最外层布局，可以做为通用刷新布局基类，只需要对于参数进行设置即可
  * 思路：
  * 修改人：
  * 修改时间：
@@ -43,7 +43,7 @@ public abstract class BaseRefreshLayout extends LinearLayout {
     private int viewWidth = 0;//视图宽度
     private int headRefreshNowMoveDistance = 0;//刷新时当前滑动的垂直方向的距离
     private int footLoadingMoreMoveDistance = 0;//上拉加载的时候当前滑动的垂直方向的距离
-    private RefreshLoadingCallback refreshLoadingCallback;
+    private RefreshLoadingCallback refreshLoadingCallback;//刷新加载的回调
 
     //动画相关
     private TimeControlChartAnimation startHeadRefreshAnim;//开始下拉刷新动画计时器
@@ -69,6 +69,9 @@ public abstract class BaseRefreshLayout extends LinearLayout {
         init(context);
     }
 
+
+    /*************************************数据内容初始化模块*****************************************/
+
     private void init(Context context){
         this.context = context;
         setOrientation(VERTICAL);
@@ -82,8 +85,10 @@ public abstract class BaseRefreshLayout extends LinearLayout {
                     headRefreshNowMoveDistance = headRefreshViewHeight +  (int) ((headRefreshNowMoveDistance - headRefreshViewHeight) * (1 - interpolatedTime));
                     onLayout(true, getLeft(), headRefreshNowMoveDistance, viewWidth, viewHeight);
                 }
-                if(interpolatedTime == 1 && refreshLoadingCallback != null){
-                    refreshLoadingCallback.isRefresh();
+                if(interpolatedTime == 1){
+                    if(refreshLoadingCallback != null){
+                        refreshLoadingCallback.startRefresh();
+                    }
                 }
             }
         });
@@ -96,8 +101,10 @@ public abstract class BaseRefreshLayout extends LinearLayout {
                     footLoadingMoreMoveDistance = footLoadingMoreViewHeight +  (int) ((footLoadingMoreMoveDistance - footLoadingMoreViewHeight) * (1 - interpolatedTime));
                     onLayout(true, getLeft(), getTop() - footLoadingMoreMoveDistance, viewWidth, viewHeight - footLoadingMoreMoveDistance);
                 }
-                if(interpolatedTime == 1 && refreshLoadingCallback != null){
-                    refreshLoadingCallback.isLoadingMore();
+                if(interpolatedTime == 1){
+                    if(refreshLoadingCallback != null){
+                        refreshLoadingCallback.startLoadingMore();
+                    }
                 }
             }
         });
@@ -111,7 +118,12 @@ public abstract class BaseRefreshLayout extends LinearLayout {
                     onLayout(true, getLeft(), headRefreshNowMoveDistance, viewWidth, viewHeight);
                 }
                 if(interpolatedTime == 1){
+                    headRefreshNowMoveDistance = 0;
                     isHeadRefresh = false;
+                    if(refreshLoadingCallback != null){
+                        refreshLoadingCallback.finishRefresh();
+                    }
+                    finishHeadRefreshAnim();
                 }
             }
         });
@@ -125,7 +137,12 @@ public abstract class BaseRefreshLayout extends LinearLayout {
                     onLayout(true, getLeft(), getTop() - footLoadingMoreMoveDistance, viewWidth, viewHeight - footLoadingMoreMoveDistance);
                 }
                 if(interpolatedTime == 1){
+                    footLoadingMoreMoveDistance = 0;
                     isFootLoadingMore = false;
+                    if(refreshLoadingCallback != null){
+                        refreshLoadingCallback.finishLoadingMore();
+                    }
+                    finishFootLoadingMoreAnim();
                 }
             }
         });
@@ -135,72 +152,6 @@ public abstract class BaseRefreshLayout extends LinearLayout {
         finishHeadRefreshAnim.setDuration(ANIMATION_TIME);//结束下拉刷新动画计时器
         finishFootLoadingMoreAnim.setDuration(ANIMATION_TIME);//结束底部上拉加载更多动画计时器
     }
-
-    private float downY;
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        //正在刷新的时候拦截所有的触摸事件
-        if(isHeadRefresh || isFootLoadingMore){
-            return true;
-        }
-        switch (ev.getAction()){
-            case MotionEvent.ACTION_DOWN:
-                downY = ev.getY();
-                break;
-            case MotionEvent.ACTION_MOVE:
-                if(isAtTheTop()){
-                    if((headRefreshNowMoveDistance == 0 && ev.getY() > downY) || headRefreshNowMoveDistance !=0) {
-                        headRefreshNowMoveDistance = (int) ((ev.getY() - downY) * 1 / 3.0);//模仿阻尼效果
-                        onLayout(true, getLeft(), headRefreshNowMoveDistance, viewWidth, viewHeight);
-                        return true;
-                    }
-                }
-                if(isAtTheBottom()){
-                    if((footLoadingMoreMoveDistance == 0 && downY > ev.getY()) || footLoadingMoreMoveDistance !=0) {
-                        footLoadingMoreMoveDistance = (int) ((downY - ev.getY()) * 1 / 3.0);//模仿阻尼效果
-                        onLayout(true, getLeft(), getTop() - footLoadingMoreMoveDistance, viewWidth, viewHeight - footLoadingMoreMoveDistance);
-                        return true;
-                    }
-                }
-                break;
-            case MotionEvent.ACTION_UP:
-                if(isAtTheTop() && headRefreshNowMoveDistance >= headRefreshViewHeight){
-                    startHeadRefresh();
-                    return true;
-                }
-                if(isAtTheBottom() && footLoadingMoreMoveDistance >= footLoadingMoreViewHeight){
-                    startFootLoadingMore();
-                    return true;
-                }
-                break;
-            default:
-                break;
-        }
-        return super.dispatchTouchEvent(ev);
-    }
-
-    @Override
-    protected void onLayout(boolean changed, int l, int t, int r, int b) {
-        if(centerFillView != null){
-            centerFillView.layout(l,t,r,b);
-        }
-        if(headRefreshView != null && isAllowHeadRefresh && isAtTheTop() && headRefreshViewHeight != 0){
-            //t - headRefreshViewHeight:会让刷新界面图像从上向下，headRefreshViewHeight - t :会让刷新界面图像从下向上
-            if(t <= headRefreshViewHeight){
-                headRefreshView.layout(l,t - headRefreshViewHeight,r,headRefreshNowMoveDistance);
-            }else {
-                headRefreshView.layout(l,headRefreshNowMoveDistance - headRefreshViewHeight,r,headRefreshNowMoveDistance);
-            }
-        }
-        if(footLoadingMoreView != null && isAllowFootLoadingMore && isAtTheBottom() && footLoadingMoreViewHeight != 0 ) {
-            if (footLoadingMoreMoveDistance <= footLoadingMoreViewHeight) {
-                footLoadingMoreView.layout(l, b, r, b + footLoadingMoreMoveDistance);
-            } else {
-                footLoadingMoreView.layout(l, b, r, b + footLoadingMoreViewHeight);
-            }
-        }
-    }
-
     //设置头部刷新视图
     protected void setHeadRefreshView(View view){
         if(view != null){
@@ -275,11 +226,131 @@ public abstract class BaseRefreshLayout extends LinearLayout {
             }
         }
     }
+    //添加回调
+    public void setRefreshLoadingCallback(RefreshLoadingCallback refreshLoadingCallback) {
+        this.refreshLoadingCallback = refreshLoadingCallback;
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        if(getMeasuredHeight() != 0 && getHeight() != 0){
+            viewHeight = Math.min(getMeasuredHeight(),getHeight());
+        }else if(getMeasuredHeight() != 0){
+            viewHeight = getMeasuredHeight();
+        }else if(getHeight() != 0){
+            viewHeight = getHeight();
+        }else {
+            viewHeight = 0;
+        }
+        if(getMeasuredWidth() != 0 && getWidth() != 0){
+            viewWidth = Math.min(getMeasuredWidth(),getWidth());
+        }else if(getMeasuredHeight() != 0){
+            viewWidth = getMeasuredWidth();
+        }else if(getHeight() != 0){
+            viewWidth = getWidth();
+        }else {
+            viewWidth = 0;
+        }
+    }
+
+
+
+
+    /**********************************滑动逻辑以及布局改变控制模块************************************/
+
+    private float downY;
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        //正在刷新的时候拦截所有的触摸事件
+        if(isHeadRefresh || isFootLoadingMore){
+            return true;
+        }
+        switch (ev.getAction()){
+            case MotionEvent.ACTION_DOWN:
+                downY = ev.getY();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if(isAtTheTop()){
+                    if((headRefreshNowMoveDistance == 0 && ev.getY() > downY) || headRefreshNowMoveDistance !=0) {
+                        headRefreshNowMoveDistance = (int) ((ev.getY() - downY) * 1 / 3.0);//模仿阻尼效果
+                        if(headRefreshViewHeight != 0 && refreshLoadingCallback != null
+                                && headRefreshNowMoveDistance <= headRefreshViewHeight) {
+                            refreshLoadingCallback.startRefreshPullDownPercent(headRefreshNowMoveDistance * 1.0 / headRefreshViewHeight);
+                        }
+                        onLayout(true, getLeft(), headRefreshNowMoveDistance, viewWidth, viewHeight);
+                        return true;
+                    }
+                }
+                if(isAtTheBottom()){
+                    if((footLoadingMoreMoveDistance == 0 && downY > ev.getY()) || footLoadingMoreMoveDistance !=0) {
+                        footLoadingMoreMoveDistance = (int) ((downY - ev.getY()) * 1 / 3.0);//模仿阻尼效果
+                        if(footLoadingMoreViewHeight != 0 && refreshLoadingCallback != null
+                                && footLoadingMoreMoveDistance <= footLoadingMoreViewHeight) {
+                            refreshLoadingCallback.startRefreshPullDownPercent(footLoadingMoreMoveDistance * 1.0 / footLoadingMoreViewHeight);
+                        }
+                        onLayout(true, getLeft(), getTop() - footLoadingMoreMoveDistance, viewWidth, viewHeight - footLoadingMoreMoveDistance);
+                        return true;
+                    }
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+                if(isAtTheTop() && headRefreshNowMoveDistance >= headRefreshViewHeight){
+                    startHeadRefresh();
+                    return true;
+                }
+                if(isAtTheBottom() && footLoadingMoreMoveDistance >= footLoadingMoreViewHeight){
+                    startFootLoadingMore();
+                    return true;
+                }
+                break;
+            default:
+                break;
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        if(centerFillView != null){
+            centerFillView.layout(l,t,r,b);
+        }
+        if(headRefreshView != null && isAllowHeadRefresh && isAtTheTop() && headRefreshViewHeight != 0){
+            //t - headRefreshViewHeight:会让刷新界面图像从上向下，headRefreshViewHeight - t :会让刷新界面图像从下向上
+            if(t <= headRefreshViewHeight){
+                headRefreshView.layout(l,t - headRefreshViewHeight,r,headRefreshNowMoveDistance);
+            }else {
+                headRefreshView.layout(l,headRefreshNowMoveDistance - headRefreshViewHeight,r,headRefreshNowMoveDistance);
+            }
+        }
+        if(footLoadingMoreView != null && isAllowFootLoadingMore && isAtTheBottom() && footLoadingMoreViewHeight != 0 ) {
+            if (footLoadingMoreMoveDistance <= footLoadingMoreViewHeight) {
+                footLoadingMoreView.layout(l, b, r, b + footLoadingMoreMoveDistance);
+            } else {
+                footLoadingMoreView.layout(l, b, r, b + footLoadingMoreViewHeight);
+            }
+        }
+    }
+
+
+
+
+
+    /********************************子类重载获取动态变量信息模块*************************************/
 
     //是否到达中间填充视图的内容最底部
     public abstract boolean isAtTheBottom();
     //是否到达中间填充视图的内容最顶部
     public abstract boolean isAtTheTop();
+    //结束下拉刷新动画
+    public abstract void finishHeadRefreshAnim();
+    //结束底部上拉加载动画
+    public abstract void finishFootLoadingMoreAnim();
+
+
+
+
+    /*************************************刷新加载控制模块*****************************************/
+
     //结束头部刷新
     public void finishHeadRefresh(){
         if(isAtTheTop() && headRefreshNowMoveDistance != 0) {
@@ -325,30 +396,10 @@ public abstract class BaseRefreshLayout extends LinearLayout {
         this.isAllowFootLoadingMore = isAllowFootLoadingMore;
     }
 
-    public void setRefreshLoadingCallback(RefreshLoadingCallback refreshLoadingCallback) {
-        this.refreshLoadingCallback = refreshLoadingCallback;
-    }
 
-    @Override
-    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        if(getMeasuredHeight() != 0 && getHeight() != 0){
-            viewHeight = Math.min(getMeasuredHeight(),getHeight());
-        }else if(getMeasuredHeight() != 0){
-            viewHeight = getMeasuredHeight();
-        }else if(getHeight() != 0){
-            viewHeight = getHeight();
-        }else {
-            viewHeight = 0;
-        }
-        if(getMeasuredWidth() != 0 && getWidth() != 0){
-            viewWidth = Math.min(getMeasuredWidth(),getWidth());
-        }else if(getMeasuredHeight() != 0){
-            viewWidth = getMeasuredWidth();
-        }else if(getHeight() != 0){
-            viewWidth = getWidth();
-        }else {
-            viewWidth = 0;
-        }
-    }
+
+
+
+
+
 }

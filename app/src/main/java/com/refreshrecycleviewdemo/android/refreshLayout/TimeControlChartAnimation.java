@@ -1,4 +1,4 @@
-package com.refreshrecycleviewdemo.android;
+package com.refreshrecycleviewdemo.android.refreshLayout;
 
 import android.view.View;
 import android.view.animation.Animation;
@@ -17,14 +17,19 @@ public class TimeControlChartAnimation extends Animation{
         this.view = view;
         this.setListener = setListener;
     }
-    int i = 0;
 
+    private float lastInterpolatedTime = 0;
     @Override
     protected void applyTransformation(float interpolatedTime, Transformation t) {
         super.applyTransformation(interpolatedTime, t);
+        if(lastInterpolatedTime != 0 && Float.compare(lastInterpolatedTime,interpolatedTime) == 0){
+            return;
+        }
+        lastInterpolatedTime = interpolatedTime;
         view.postInvalidate();
         setListener.percent(interpolatedTime);
     }
+
 
     public interface SetPercentCallbackListener{
         void percent(float interpolatedTime);

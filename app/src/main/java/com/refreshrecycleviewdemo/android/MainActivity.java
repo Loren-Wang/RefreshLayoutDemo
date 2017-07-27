@@ -9,6 +9,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.refreshrecycleviewdemo.android.refreshLayout.RefreshLoadingCallback;
+import com.refreshrecycleviewdemo.android.refreshLayout.RefreshRecycleView;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +21,7 @@ public class MainActivity extends AppCompatActivity {
     private Context context;
     private LayoutInflater inflater;
     private List<String> list = new ArrayList<>();
+    private RefreshRecycleViewAdapter refreshRecycleViewAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,12 +34,12 @@ public class MainActivity extends AppCompatActivity {
         for(int i = 0 ; i < 20 ; i++){
             list.add(String.valueOf(i));
         }
-
-        test.setAdapter(new RefreshRecycleViewAdapter());
+        refreshRecycleViewAdapter = new RefreshRecycleViewAdapter(list);
+        test.setAdapter(refreshRecycleViewAdapter);
 
         test.setRefreshLoadingCallback(new RefreshLoadingCallback() {
             @Override
-            public void isRefresh() {
+            public void startRefresh() {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -50,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void isLoadingMore() {
+            public void startLoadingMore() {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -63,6 +67,35 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }).start();
             }
+
+            @Override
+            public void finishRefresh() {
+                list.clear();
+                for (int i = 0; i < 20; i++) {
+                    list.add(String.valueOf(i));
+                }
+                refreshRecycleViewAdapter.setList(list);
+            }
+
+            @Override
+            public void finishLoadingMore() {
+                int size = list.size();
+                for (int i = size; i < size + 20; i++) {
+                    list.add(String.valueOf(i));
+                }
+                refreshRecycleViewAdapter.setList(list);
+            }
+
+            @Override
+            public void startRefreshPullDownPercent(double percent) {
+
+            }
+
+            @Override
+            public void startLoadingMorePullUpPercent(double percent) {
+
+            }
+
         });
 
     }
@@ -70,6 +103,12 @@ public class MainActivity extends AppCompatActivity {
 
 
     private class RefreshRecycleViewAdapter extends RecyclerView.Adapter<Holder>{
+
+        private List<String> list = new ArrayList<>();
+
+        public RefreshRecycleViewAdapter(List<String> list) {
+            this.list = list;
+        }
 
         @Override
         public Holder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -84,6 +123,11 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public int getItemCount() {
             return list.size();
+        }
+
+        public void setList(List<String> list) {
+            this.list = list;
+            notifyDataSetChanged();
         }
     }
 
