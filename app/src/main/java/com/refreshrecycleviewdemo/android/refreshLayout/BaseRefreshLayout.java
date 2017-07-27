@@ -15,7 +15,20 @@ import android.widget.LinearLayout;
  * 创建时间： 0026/2017/7/26 10:11
  * 创建人：王亮（Loren wang）
  * 功能作用：刷新控件的最外层布局，可以做为通用刷新布局基类，只需要对于参数进行设置即可
- * 思路：
+ * 思路：1、由子类向基类传递三个view视图，分别是头部刷新、中间填充、底部加载视图，同时在传递进入之后需要对头部刷新以及
+ *         底部加载视图的高度进行计算并记录，如果无法获得到视图高度那么代表着视图无效
+ *      2、阻尼效果实现：实际滑动距离除以3.0可以出现类似于阻尼效果
+ *      3、开始刷新、结束刷新、开始加载、结束加载的动画由TimeControlChartAnimation动画控制器控制，有控制器返回已
+ *         消耗的时间比例，然后根据时间比例以及需要移动的总体移动距离来进行显示或隐藏的动画效果
+ *      4、对于刷新加载状态的方法暴露出去的只有结束功能，开始功能由基类控制，否则的话可能会导致崩溃
+ *      5、所有的布局效果都由layout进行子布局完成，视图的总高度总宽度由onMeasure方法获得
+ *      6、使用dispatchTouchEvent拦截所有的触摸事件（未过滤多指问题），如果是正在刷新的状态则拦截所有事件，否则就要
+ *         在第一次点击的时候记录按下的位置然后在滑动的时候判断中间填充视图是否到达了顶部或者底部，同时再进行刷新加载
+ *         视图是否存在，高度是否存在等，如果符合条件则计算阻尼的距离然后传递给layou进行重新布局，最后在手指拿起的时
+ *         候进行回弹至刷新刚好显示刷新或加载的位置，同时在回弹后返回开始刷新的回调，最后又调用者调用结束方法，结束刷
+ *         新加载，同时回调结束状态，回调成功之后在调用相应的结束方法的抽象方法给子类，让子类更新当前的是否到顶部或者
+ *         底部的状态
+ *
  * 修改人：
  * 修改时间：
  * 备注：
@@ -26,8 +39,8 @@ public abstract class BaseRefreshLayout extends LinearLayout {
     private Context context;
     private static final String TAG = "BaseRefreshLayout";
 
-    private View headRefreshView;//头部刷新视图
-    private View footLoadingMoreView;//底部加载更多视图
+    private LinearLayout headRefreshView;//头部刷新视图
+    private LinearLayout footLoadingMoreView;//底部加载更多视图
     private View centerFillView;//中间填充视图
 
     //布尔值状态判断相关
@@ -75,6 +88,14 @@ public abstract class BaseRefreshLayout extends LinearLayout {
     private void init(Context context){
         this.context = context;
         setOrientation(VERTICAL);
+
+        //初始化刷新加载view
+        headRefreshView = new LinearLayout(getContext());
+        headRefreshView.setOrientation(VERTICAL);
+        headRefreshView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        footLoadingMoreView = new LinearLayout(getContext());
+        footLoadingMoreView.setOrientation(VERTICAL);
+        footLoadingMoreView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         //开始下拉刷新动画计时器
         startHeadRefreshAnim = new TimeControlChartAnimation(this, new TimeControlChartAnimation.SetPercentCallbackListener() {
@@ -160,8 +181,13 @@ public abstract class BaseRefreshLayout extends LinearLayout {
                 removeView(headRefreshView);
                 headRefreshViewHeight = 0;
             }
+            if(headRefreshView != null && headRefreshView.getChildAt(0) != null && headRefreshView.getChildAt(0).equals(view)){
+                Log.i(TAG,"remove view");
+                headRefreshView.removeView(view);
+                headRefreshViewHeight = 0;
+            }
             Log.i(TAG,"add headRefreshView");
-            headRefreshView = view;
+            headRefreshView.addView(view);
             headRefreshView.measure(0,0);
             int measuredHeight = headRefreshView.getMeasuredHeight();
             int height = headRefreshView.getHeight();
@@ -187,8 +213,13 @@ public abstract class BaseRefreshLayout extends LinearLayout {
                 removeView(footLoadingMoreView);
                 footLoadingMoreViewHeight = 0;
             }
+            if(footLoadingMoreView != null && footLoadingMoreView.getChildAt(0) != null && footLoadingMoreView.getChildAt(0).equals(view)){
+                Log.i(TAG,"remove view");
+                footLoadingMoreView.removeView(view);
+                footLoadingMoreViewHeight = 0;
+            }
             Log.i(TAG,"add footLoadingMoreView");
-            footLoadingMoreView = view;
+            footLoadingMoreView.addView(view);
             footLoadingMoreView.measure(0,0);
             int measuredHeight = footLoadingMoreView.getMeasuredHeight();
             int height = footLoadingMoreView.getHeight();
@@ -230,7 +261,6 @@ public abstract class BaseRefreshLayout extends LinearLayout {
     public void setRefreshLoadingCallback(RefreshLoadingCallback refreshLoadingCallback) {
         this.refreshLoadingCallback = refreshLoadingCallback;
     }
-
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
