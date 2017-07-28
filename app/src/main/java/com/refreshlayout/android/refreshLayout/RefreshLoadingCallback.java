@@ -1,4 +1,4 @@
-package com.refreshrecycleviewdemo.android.refreshLayout;
+package com.refreshlayout.android.refreshLayout;
 
 /**
  * Created by wangliang on 0026/2017/7/26.

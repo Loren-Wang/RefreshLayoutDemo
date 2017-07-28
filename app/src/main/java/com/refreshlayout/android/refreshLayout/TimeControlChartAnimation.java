@@ -1,4 +1,4 @@
-package com.refreshrecycleviewdemo.android.refreshLayout;
+package com.refreshlayout.android.refreshLayout;
 
 import android.view.View;
 import android.view.animation.Animation;

@@ -1,4 +1,4 @@
-package com.refreshrecycleviewdemo.android;
+package com.refreshlayout.android;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
 
-        assertEquals("com.refreshrecycleviewdemo.android", appContext.getPackageName());
+        assertEquals("com.refreshlayout.android", appContext.getPackageName());
     }
 }

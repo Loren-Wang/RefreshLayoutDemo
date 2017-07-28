@@ -1,4 +1,4 @@
-package com.refreshrecycleviewdemo.android.refreshLayout;
+package com.refreshlayout.android.refreshLayout;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -9,8 +9,7 @@ import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 
-import com.refreshrecycleviewdemo.android.R;
-import com.refreshrecycleviewdemo.android.refreshLayout.BaseRefreshLayout;
+import com.refreshlayout.android.R;
 
 /**
  * Created by wangliang on 0019/2017/6/19.
@@ -125,22 +124,22 @@ public class RefreshRecycleView extends BaseRefreshLayout {
     }
 
     @Override
-    public boolean isAtTheBottom() {
+    protected boolean isAtTheBottom() {
         return isAtTheBottom;
     }
 
     @Override
-    public boolean isAtTheTop() {
+    protected boolean isAtTheTop() {
         return isAtTheTop;
     }
 
     @Override
-    public void finishHeadRefreshAnim() {
+    protected void finishHeadRefreshAnim() {
         refreshTopBottomStates(linearLayoutManager);
     }
 
     @Override
-    public void finishFootLoadingMoreAnim() {
+    protected void finishFootLoadingMoreAnim() {
         refreshTopBottomStates(linearLayoutManager);
     }
 

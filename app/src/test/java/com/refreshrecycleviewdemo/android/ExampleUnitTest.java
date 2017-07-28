@@ -1,4 +1,4 @@
-package com.refreshrecycleviewdemo.android;
+package com.refreshlayout.android;
 
 import org.junit.Test;
 
